@@ -18,7 +18,7 @@
 <body>
 
     <h1>🏃‍♂️ 우리 반 AI 리딩런 (Reading Run) 🏃‍♀️</h1>
-    <div id="timer">제한시간: 15:00</div>
+    <div id="timer">제한시간: 01:00</div>
     
     <button id="start-btn" onclick="startGame()">게임 시작!</button>
     <br>
@@ -37,6 +37,7 @@
         let timeLeft = 60; // 💡 제한시간 설정 (초 단위, 현재 60초)
         let timerInterval;
         let recognition;
+        let isGameRunning = false; // 게임 상태 관리 변수 추가
 
         // 화면에 문장 배치
         const container = document.getElementById("text-container");
@@ -74,11 +75,28 @@
                     }
                 }
             };
+
+            // [보완] 마이크 무음이나 에러가 나도 게임 도중엔 자동으로 재시작하도록 처리
+            recognition.onerror = function(event) {
+                console.log("음성 인식 에러 발생:", event.error);
+                if (event.error === 'not-allowed') {
+                    alert("브라우저 주소창 왼쪽의 자물쇠 아이콘을 눌러 마이크 권한을 '허용'으로 변경해주세요!");
+                }
+            };
+
+            // [보완] 소리가 안 들려 끊겼을 때 게임 중이라면 자동으로 마이크 다시 켜기
+            recognition.onend = function() {
+                if (isGameRunning) {
+                    try { recognition.start(); } catch(e) {}
+                }
+            };
+
         } else {
             alert("크롬(Chrome) 브라우저에서만 작동하는 프로그램입니다.");
         }
 
         function startGame() {
+            isGameRunning = true; // 게임 시작 상태 활성화
             document.getElementById("start-btn").style.display = "none";
             document.getElementById("result-box").style.display = "none";
             currentWordIndex = 0;
@@ -101,7 +119,11 @@
             }, 1000);
 
             // 음성인식 시작
-            recognition.start();
+            try {
+                recognition.start();
+            } catch (e) {
+                console.log("마이크가 이미 작동 중이거나 오류가 있습니다:", e);
+            }
         }
 
         function highlightWord(index) {
@@ -114,8 +136,10 @@
         }
 
         function endGame() {
+            isGameRunning = false; // 게임 상태 종료
             clearInterval(timerInterval);
-            recognition.stop();
+            try { recognition.stop(); } catch(e) {}
+            
             document.getElementById("timer").innerText = "게임 종료!";
             document.getElementById("start-btn").style.display = "inline-block";
             document.getElementById("start-btn").innerText = "다시 도전하기";
